@@ -16,6 +16,8 @@ internal static class TypeCheck<T>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsNull(T value) =>
-        (IsReferenceType && value is null) || (IsNullableType && value.Equals(default));
+    internal static bool IsNull(T? value) 
+        => IsReferenceType ? value is null
+        : IsNullableType ? value!.Equals(default)
+        : false;
 }
