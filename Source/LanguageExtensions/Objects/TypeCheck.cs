@@ -1,7 +1,8 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace LanguageExtensions.Objects;
+
 internal static class TypeCheck<T>
 {
     private static readonly bool IsReferenceType;
@@ -15,9 +16,14 @@ internal static class TypeCheck<T>
         IsReferenceType = !typeof(T).IsValueType;
     }
 
+    /// <summary>
+    /// Checks if value is null for Reference or Nullable types. 
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsNull(T? value) 
+    [DebuggerStepThrough]
+    internal static bool IsNull(T value)
         => IsReferenceType ? value is null
         : IsNullableType ? value!.Equals(default)
         : false;
 }
+

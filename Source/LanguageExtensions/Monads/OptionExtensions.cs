@@ -1,25 +1,63 @@
-﻿namespace LanguageExtensions.Monads.Extensions;
+﻿using System.Runtime.CompilerServices;
 
-public static class OptionExtensions
+namespace LanguageExtensions.Monads;
+
+public static partial class Option
 {
-    public static void Do<TX>(this Option<TX> option, Action<TX> action)
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Option<T> None<T>() => Option<T>.None;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Option<T> For<T>(T value) => value.ToOption();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Option<T> For<T>(T? value) where T : struct => value.ToOption();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Option<T> ToOption<T>(this T value) => Option<T>.Create(value);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Option<T> ToOption<T>(this T? value) where T : struct => Option<T>.Create(value);
+
+    /// <summary>
+    /// Tests the Optional value for condition and throws or returns None when condition is not met.
+    /// </summary>
+    public static Option<T> Test<T>(this Option<T> option, Predicate<T> predicate, bool throwOnFalse = false)
     {
-        if (option.IsSome)
-            action(option.Value);
+        if (option.IsSome && predicate(option.Reduce()))
+        {
+            if (throwOnFalse)
+                throw new ApplicationException($"Option<{typeof(T).Name}> condition failed.");
+            else
+                return Option.None<T>();
+        }
+
+        return option;
     }
 
-    public static ValueTask Do<TX>(this Option<TX> option, Func<TX, ValueTask> action)
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void Do<T>(this Option<T> option, Action<T> action)
     {
         if (option.IsSome)
-            return action(option.Value);
+            action(option.Reduce());
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ValueTask Do<T>(this Option<T> option, Func<T, ValueTask> action)
+    {
+        if (option.IsSome)
+            return action(option.Reduce());
 
         return ValueTask.CompletedTask;
     }
 
-    public static Task Do<TX>(this Option<TX> option, Func<TX, Task> action)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task Do<T>(this Option<T> option, Func<T, Task> action)
     {
         if (option.IsSome)
-            return action(option.Value);
+            return action(option.Reduce());
 
         return Task.CompletedTask;
     }
