@@ -28,33 +28,33 @@ public class Option_ReferenceTypes_Tests
 
     [Fact]
     public void Create_PersonNull_IsSome_IsFalse()
-        => Option<Person>.Create(null).IsSome.Should().BeFalse();
+        => Option.Create<Person>(null).IsSome.Should().BeFalse();
 
 
     [Fact]
     public void Create_NullablePerson_Null_IsSome_IsFalse()
-        => Option<Person?>.Create(null).IsSome.Should().BeFalse();
+        => Option.Create<Person?>(null).IsSome.Should().BeFalse();
 
     [Fact]
     public void Create_Person_NonEmpty_IsSome_IsTrue()
-        => Option<Person>.Create(new Person("a",1)).IsSome.Should().BeTrue();
+        => Option.Create<Person>(new Person("a",1)).IsSome.Should().BeTrue();
 
     [Fact]
     public void Create_NullablePerson_NonEmpty_IsSome_IsTrue()
-        => Option<Person?>.Create(new Person("a", 1)).IsSome.Should().BeTrue();
+        => Option.Create<Person?>(new Person("a", 1)).IsSome.Should().BeTrue();
 
 
 
 
     [Fact]
     public void Create_Person_NonEmpty_Value_IsValue()
-        => Option<Person>.Create(new Person("a", 1)).Value.Should().Be(new Person("a", 1));
+        => Option.Create<Person>(new Person("a", 1)).Value.Should().Be(new Person("a", 1));
 
     [Fact]
     public void Create_NullablePerson_NonEmpty_Value_IsValue()
-        => Option<Person?>.Create(new Person("a", 1)).Value.Should().Be(new Person("a", 1));
+        => Option.Create<Person?>(new Person("a", 1)).Value.Should().Be(new Person("a", 1));
 
     [Fact]
     public void Create_NullablePerson_Null_Value_IsValue()
-        => Option<Person?>.Create(null).Value.Should().Be(null);
+        => Option.Create<Person?>(null).Value.Should().Be(null);
 }

@@ -26,30 +26,30 @@ public class Option_ValueTypes_Tests
 
     [Fact]
     public void Create_IntZero_IsSome_IsTrue()
-        => Option<int>.Create(0).IsSome.Should().BeTrue();
+        => Option.Create<int>(0).IsSome.Should().BeTrue();
 
     [Fact]
     public void Create_NullableIntNull_IsSome_IsFalse()
-        => Option<int?>.Create(null).IsSome.Should().BeFalse();
+        => Option.Create<int?>(null).IsSome.Should().BeFalse();
 
     [Fact]
     public void Create_IntNonZero_IsSome_IsTrue()
-        => Option<int>.Create(1).IsSome.Should().BeTrue();
+        => Option.Create(1).IsSome.Should().BeTrue();
 
     [Fact]
     public void Create_NullableIntNonZero_IsSome_IsTrue()
-        => Option<int?>.Create(1).IsSome.Should().BeTrue();
+        => Option.Create<int?>(1).IsSome.Should().BeTrue();
 
 
 
 
     [Fact]
     public void Create_IntNonZero_Value_IsValue()
-        => Option<int>.Create(1).Value.Should().Be(1);
+        => Option.Create(1).Value.Should().Be(1);
 
     [Fact]
     public void Create_NullableIntNonZero_Value_IsValue()
-        => Option<int?>.Create(1).Value.Should().Be(1);
+        => Option.Create<int?>(1).Value.Should().Be(1);
 
 
 
