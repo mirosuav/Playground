@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace LanguageExtensions.Objects;
+namespace LanguageExtensions.Helpers;
 
 internal static class TypeCheck<T>
 {

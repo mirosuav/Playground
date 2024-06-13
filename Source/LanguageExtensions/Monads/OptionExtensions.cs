@@ -1,4 +1,5 @@
 ﻿using LanguageExtensions.Exceptions;
+using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -21,9 +22,8 @@ public static partial class Option
     {
         if (option.IsSome)
         {
-            var val = option.Reduce();
-            if (condition(val))
-                return Option<Y>.Create(mapper(val));
+            if (condition(option.Value))
+                return Option<Y>.Create(mapper(option.Value));
         }
         return Option<Y>.None;
     }
@@ -33,19 +33,26 @@ public static partial class Option
     /// </summary>
     public static Option<T> ThrowIf<T>(this Option<T> option, Func<T, bool> throwCondition)
     {
-        if (option.IsSome && throwCondition(option.Reduce()))
-            throw NotSupportedOptionalException.Instance;
+        if (option.IsSome && throwCondition(option.Value))
+            throw OptionalObjectException.InvalidObject;
 
         return option;
     }
 
     /// <summary>
-    /// Returns None<T> when provided condition is met otherwise returns original Option
+    /// Returns None<T> when provided condition is met otherwise returns original Option. Skips checking if option is already None.
     /// </summary>
     public static Option<T> NoneIf<T>(this Option<T> option, Func<T, bool> noneCondition)
     {
-        if (option.IsSome && noneCondition(option.Reduce()))
-            None<T>();
+        if (option.IsSome && noneCondition(option.Value))
+            return None<T>();
+
+        return option;
+    }
+    public static Option<T> NoneIfEmpty<T>(this Option<T> option) where T : ICollection
+    {
+        if (option.IsSome && option.Value.Count == 0)
+            return None<T>();
 
         return option;
     }
@@ -53,13 +60,13 @@ public static partial class Option
     public static void Do<T>(this Option<T> option, Action<T> action)
     {
         if (option.IsSome)
-            action(option.Reduce());
+            action(option.Value);
     }
 
     public static ValueTask Do<T>(this Option<T> option, Func<T, ValueTask> action)
     {
         if (option.IsSome)
-            return action(option.Reduce());
+            return action(option.Value);
 
         return ValueTask.CompletedTask;
     }
@@ -67,7 +74,7 @@ public static partial class Option
     public static Task Do<T>(this Option<T> option, Func<T, Task> action)
     {
         if (option.IsSome)
-            return action(option.Reduce());
+            return action(option.Value);
 
         return Task.CompletedTask;
     }

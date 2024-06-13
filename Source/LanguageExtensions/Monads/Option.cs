@@ -1,4 +1,4 @@
-﻿using LanguageExtensions.Objects;
+﻿using LanguageExtensions.Helpers;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -35,7 +35,7 @@ public record struct Option<T>
     /// <summary>
     /// IS empty/none
     /// </summary>
-    public bool IsNone => !_isSome;
+    public bool IsNone => !IsSome;
     private Option(T value, bool isSome) => (_value, _isSome) = (value, isSome);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -70,7 +70,7 @@ public record struct Option<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TCast ReduceAs<TCast>(TCast @default = default!) => IsSome && _value is TCast outVal ? outVal : @default;
 
-    public override string? ToString() => IsSome ? _value!.ToString() : NoneString;
+    public override string ToString() => IsSome ? _value!.ToString()! : NoneString;
 
-    public static implicit operator Option<T>(T value) => Create(value);
+    public static implicit operator Option<T>(T value) => value.ToOption();
 }
