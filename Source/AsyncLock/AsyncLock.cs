@@ -3,7 +3,11 @@ using System.Threading;
 
 namespace AsyncLock;
 
-internal static class AsynchronousControlFlowContext
+/// <summary>
+/// Keeps the Id (Guid) of current async control flow regardless of the running thread.
+/// <seealso href="https://learn.microsoft.com/en-us/dotnet/api/system.threading.asynclocal-1?view=net-8.0"/>
+/// </summary>
+internal static class AsyncControlFlowContext
 {
     private readonly static AsyncLocal<Guid> CurrentId = new();
 
@@ -18,83 +22,111 @@ internal static class AsynchronousControlFlowContext
     }
 }
 
-/// <summary>
-/// Represent currently locked asynchronous control flow section
-/// </summary>
-internal sealed class LockingContext(Guid contextId)
-{
-    public readonly Guid ContextId = contextId;
-    public readonly SemaphoreSlim Semaphore = new(1, 1);
-}
 
-public sealed class AsyncLock
+public static class AsyncLock
 {
-    private static readonly SemaphoreSlim selfLock = new SemaphoreSlim(1, 1);
-    private static readonly ConcurrentDictionary<object, LockingContext> locks = new();
+    private static readonly object selfLock = new();
+    private static readonly ConcurrentDictionary<object, LockedSectionContext> protectedSections = new();
 
-    public async Task<IDisposable> LockAsync(object key, CancellationToken cancellation = default)
+    internal static int ProtectedSectionsCount => protectedSections.Count();
+
+    /// <summary>
+    /// Asynchronously waits for the protected section to be freed and returns IDisposable object
+    /// that locks the section until disposal
+    /// </summary>
+    /// <param name="key">Key for locking the section</param>
+    /// <param name="cancellationToken">Cancellation token used to cancel waiting</param>
+    /// <returns>IDisposable object that locks the section until disposal</returns>
+    public static Task<IDisposable> WaitAsync(object key, CancellationToken cancellationToken = default)
     {
-        await selfLock.WaitAsync(cancellation);
-
-        try
+        lock (selfLock)
         {
-            // Get Id of current asynchronous flow context
-            var currentContextId = AsynchronousControlFlowContext.GetId();
-
-            // Entering already locked section
-            if (locks.TryGetValue(key, out var lockedSection))
-            {
-                // Same context is reentering its own locked section
-                if (lockedSection.ContextId == currentContextId)
-                {
-
-                }
-
-                // New context is entering locked section                
-                var releaser = new LockReleaser(lockedSection.Semaphore);
-                var waiter = lockedSection.Semaphore.WaitAsync(cancellation);
-
-                // Semaphore is already released
-                if (waiter.IsCompleted)
-                    return Task.FromResult(releaser);
-
-                // Return pending semaphore task and return releaser on continuation
-                return waiter!.ContinueWith(
-                        (t, state) => state as IDisposable,
-                        releaser,
-                        cancellation,
-                        TaskContinuationOptions.ExecuteSynchronously,
-                        TaskScheduler.Default);
-            }
-
-            // Entering new unlocked section
-
-        }
-        finally
-        {
-            selfLock.Release();
+            return protectedSections.TryGetValue(key, out var lockedContext)
+                ? EnterProtectedSection(lockedContext, cancellationToken)
+                : CreateNewProtectedSection(key, cancellationToken);
         }
     }
-}
 
-internal sealed class LockReleaser(SemaphoreSlim Semaphore) : IDisposable
-{
-    private readonly SemaphoreSlim semaphore = Semaphore;
-
-    public void Dispose()
+    private static Task<IDisposable> EnterProtectedSection(
+        LockedSectionContext protectedSectionContext,
+        CancellationToken cancellationToken)
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
+        // Same context is reentering its own protected section
+        // meaning its not blocked and doesn't need to release a semaphore
+        if (protectedSectionContext.ContextId == AsyncControlFlowContext.GetId())
+        {
+            return Task.FromResult((IDisposable)new DisposedLock());
+        }
+
+        return CreateNewLockedSectionReleaser(protectedSectionContext, cancellationToken);
     }
 
-    private void Dispose(bool disposing)
+    private static Task<IDisposable> CreateNewProtectedSection(
+        object key,
+        CancellationToken cancellationToken)
     {
-        if (disposing) semaphore.Release();
+        var protectedSectionContext = new LockedSectionContext(AsyncControlFlowContext.GetId());
+
+        if (!protectedSections.TryAdd(key, protectedSectionContext))
+            throw new InvalidOperationException($"Could not asynchronously lock section on {key}.");
+
+        return CreateNewLockedSectionReleaser(protectedSectionContext, cancellationToken);
     }
 
-    ~LockReleaser()
+    private static Task<IDisposable> CreateNewLockedSectionReleaser(
+        LockedSectionContext protectedSectionContext,
+        CancellationToken cancellationToken)
     {
-        Dispose(false);
+        // New async context is entering locked section
+        IDisposable sectionReleaser = new LockedSectionReleaser(protectedSectionContext.Semaphore);
+
+        Task waiter = protectedSectionContext.Semaphore.WaitAsync(cancellationToken);
+
+        // Semaphore is open, don't wait just enter with releaser
+        if (waiter.IsCompleted)
+            return Task.FromResult(sectionReleaser);
+
+        // Return awaiting semaphore task with continuation
+        // When semaphore is released return section releaser
+        // which releases the semaphore and protected section on disposal
+        return waiter.ContinueWith(
+                (_, sectionReleaser) => sectionReleaser as IDisposable,
+                sectionReleaser,
+                cancellationToken)!;
+    }
+
+    private sealed class LockedSectionContext(Guid contextId)
+    {
+        public readonly Guid ContextId = contextId;
+        public readonly SemaphoreSlim Semaphore = new(1, 1);
+    }
+
+    private sealed class LockedSectionReleaser(SemaphoreSlim Semaphore) : IDisposable
+    {
+        private readonly SemaphoreSlim semaphore = Semaphore;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            // TODO can we remove the section from the dictionary here ?
+            if (disposing) semaphore.Release();
+        }
+
+        ~LockedSectionReleaser()
+        {
+            Dispose(false);
+        }
+    }
+
+    // TODO Check if we can return a static disposed instance of this instead of newing every time
+    private sealed class DisposedLock : IDisposable
+    {
+        public void Dispose() => GC.SuppressFinalize(this);
     }
 }
 
