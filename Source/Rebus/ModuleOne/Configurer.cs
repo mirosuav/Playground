@@ -4,7 +4,6 @@ using ModuleTwo;
 using Rebus.Config;
 using Rebus.Routing.TypeBased;
 using Rebus.Transport.InMem;
-using Rebus.Workers.TplBased;
 
 namespace ModuleOne;
 
@@ -22,11 +21,13 @@ public static class Configurer
                     .Serialization(Constants.CommonBusSerializerConfig)
                     .Routing(config => config
                         .TypeBased()
-                        .MapAssemblyDerivedFrom<IModuleTwoRequest>($"{Constants.ModuleTwoBus}-queue"));
+                        .MapAssemblyDerivedFrom<IQuery2>($"{Constants.ModuleTwoBus}-queue")
+                        .MapAssemblyDerivedFrom<ICommand2>($"{Constants.ModuleTwoBus}-queue")
+                        .MapAssemblyDerivedFrom<IResponse1>($"{Constants.HostBus}-queue"));
             },
             key: Constants.ModuleOneBus);
 
-        services.AutoRegisterHandlersFromAssemblyOf<ModuleOneRequestHandler>();
+        services.AutoRegisterHandlersFromAssemblyOf<Command1Handler>();
 
         var ioc = services.BuildServiceProvider();
 

@@ -19,7 +19,7 @@ public class RebusBenchmarks
     }
 
     [Benchmark]
-    public Task<int> SendRequest() => _bus.SendRequest<int>(new ModuleOneRequest(1, 3));
+    public Task<int> SendRequest() => _bus.SendRequest<int>(new Query1(1, 3));
 
 }
 

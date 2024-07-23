@@ -15,14 +15,14 @@ public static class Constants
     public static void CommonBusOptionsConfigurer(OptionsConfigurer configurer)
     {
         configurer.EnableSynchronousRequestReply();
-        //configurer.SetNumberOfWorkers(10);
-        configurer.SetMaxParallelism(10);
+        // configurer.SetNumberOfWorkers(2);
+        //configurer.SetMaxParallelism(10);
         //configurer.UseTplToReceiveMessages();
     }
 
     public static void CommonBusSerializerConfig(StandardConfigurer<ISerializer> configurer)
     {
-       // configurer.UseProtobuf();
-       // configurer.UseNewtonsoftJson();
+        // configurer.UseProtobuf();
+        // configurer.UseNewtonsoftJson();
     }
 }
