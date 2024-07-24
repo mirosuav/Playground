@@ -12,7 +12,7 @@ public class Query2Handler(IBus bus) : IHandleMessages<Query2>
 {
     public Task Handle(Query2 message)
     {
-        Console.WriteLine($"[#######] Received: {message}");
+        Console.WriteLine($"[#######] ModuleTwo received: {message} and replies to ModuleOne");
         return bus.Reply(message.A + message.B);
     }
 }
@@ -24,7 +24,7 @@ public class Command2Handler(IBus bus) : IHandleMessages<Command2>
 {
     public Task Handle(Command2 message)
     {
-        Console.WriteLine($"[#######] Received and sending ot ModuleOne: {message}");
+        Console.WriteLine($"[#######] ModuleTwo received and sending to ModuleOne: {message}");
         return bus.Send(new Response2(message.A, message.A + message.B));
     }
 }
