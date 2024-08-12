@@ -101,27 +101,43 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
 
         if (context.ExecutionPointer.EventData is not RecurringResult recurringResult)
             throw new ApplicationException("Invalid or missing data returned from recurring command!");
+        
+        if (recurringResult.RemainingItems <= 0)
+            return ExecutionResult.Next();
 
         context.ExecutionPointer.EventPublished = false;
-
-        if (context.PersistenceData == null)
+        ///
+        
+        var id2 = await CreateWorkerAndDoWork();
+        return new ExecutionResult
         {
-            if (recurringResult.RemainingItems <= 0)
-                return ExecutionResult.Next();
+            EventName = nameof(RecurringResult),
+            EventKey = id2.ToString(),
+            EventAsOf = now.ToUniversalTime(),
+            Proceed = false,
+            BranchValues = [null],
+        };
 
-            var id = await CreateWorkerAndDoWork();
-            return WaitForRecurringResultEventWithPersistence(id, now, [context.Item], new ControlPersistenceData { ChildrenActive = true });
-        }
+        ///
 
-        if (context.PersistenceData is ControlPersistenceData { ChildrenActive: true })
-        {
-            if (!context.Workflow.IsBranchComplete(context.ExecutionPointer.Id))
-                return ExecutionResult.Persist(context.PersistenceData);
+        //if (context.PersistenceData == null)
+        //{
+        //    if (recurringResult.RemainingItems <= 0)
+        //        return ExecutionResult.Next();
 
-            return ExecutionResult.Persist(null);  //re-evaluate condition on next pass
-        }
+        //    var id = await CreateWorkerAndDoWork();
+        //    return WaitForRecurringResultEventWithPersistence(id, now, [context.Item], new ControlPersistenceData { ChildrenActive = true });
+        //}
 
-        throw new CorruptPersistenceDataException();
+        //if (context.PersistenceData is ControlPersistenceData { ChildrenActive: true })
+        //{
+        //    if (!context.Workflow.IsBranchComplete(context.ExecutionPointer.Id))
+        //        return ExecutionResult.Persist(context.PersistenceData);
+
+        //    return ExecutionResult.Persist(null);  //re-evaluate condition on next pass
+        //}
+
+        //throw new CorruptPersistenceDataException();
     }
 
     private static ExecutionResult WaitForRecurringResultEvent(Guid id, DateTime after)
