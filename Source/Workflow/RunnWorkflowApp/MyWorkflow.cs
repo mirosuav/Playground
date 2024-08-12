@@ -30,29 +30,29 @@ public class MyWorkflow : IWorkflow<WorkState>
                 Console.WriteLine($"Starting workflow: {state.Workflow.Data}");
                 return ExecutionResult.Next();
             })
-            //.Then<RepeatUntilWorkDone>()
+            .Then<RepeatUntilWorkDone>()
 
 
-            .Output(state => state.ExternalData,
-                step => new RecurringResult(1)) // start with at least one item to process
-            .While(state => state.HasRecurringResult && state.RemainingItems > 0)
-            .Do(x =>
-            {
-                x.StartWith(state =>
-                    {
-                        Console.WriteLine($"> Recur iteration ENTER: {state.Workflow.Data}");
-                        return ExecutionResult.Next();
-                    })
-                    .Then<RecurringStep>()
-                    .Output(state => state.RecordId, step => step.Id)
-                    .WaitFor(nameof(RecurringResult), state => state.RecordId.ToString(), state => DateTime.Now)
-                    .Output(state => state.ExternalData, waitFor => waitFor.EventData)
-                    .Then(state =>
-                    {
-                        Console.WriteLine($"> Recur iteration EXIT: {state.Workflow.Data}");
-                        return ExecutionResult.Next();
-                    });
-            })
+            //.Output(state => state.ExternalData,
+            //    step => new RecurringResult(1)) // start with at least one item to process
+            //.While(state => state.HasRecurringResult && state.RemainingItems > 0)
+            //.Do(x =>
+            //{
+            //    x.StartWith(state =>
+            //        {
+            //            Console.WriteLine($"> Recur iteration ENTER: {state.Workflow.Data}");
+            //            return ExecutionResult.Next();
+            //        })
+            //        .Then<RecurringStep>()
+            //        .Output(state => state.RecordId, step => step.Id)
+            //        .WaitFor(nameof(RecurringResult), state => state.RecordId.ToString(), state => DateTime.Now)
+            //        .Output(state => state.ExternalData, waitFor => waitFor.EventData)
+            //        .Then(state =>
+            //        {
+            //            Console.WriteLine($"> Recur iteration EXIT: {state.Workflow.Data}");
+            //            return ExecutionResult.Next();
+            //        });
+            //})
 
             //.Recur(
             //    state => TimeSpan.FromMilliseconds(100),
@@ -102,16 +102,50 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
         if (context.ExecutionPointer.EventData is not RecurringResult recurringResult)
             throw new ApplicationException("Invalid or missing data returned from recurring command!");
 
-        if (recurringResult.RemainingItems <= 0)
-            return ExecutionResult.Next();
+        context.ExecutionPointer.EventPublished = false;
 
-        var id2 = await CreateWorkerAndDoWork();
-        return WaitForRecurringResultEvent(id2, now);
+        if (context.PersistenceData == null)
+        {
+            if (recurringResult.RemainingItems <= 0)
+                return ExecutionResult.Next();
+
+            var id = await CreateWorkerAndDoWork();
+            return WaitForRecurringResultEventWithPersistence(id, now, [context.Item], new ControlPersistenceData { ChildrenActive = true });
+        }
+
+        if (context.PersistenceData is ControlPersistenceData { ChildrenActive: true })
+        {
+            if (!context.Workflow.IsBranchComplete(context.ExecutionPointer.Id))
+                return ExecutionResult.Persist(context.PersistenceData);
+
+            return ExecutionResult.Persist(null);  //re-evaluate condition on next pass
+        }
+
+        throw new CorruptPersistenceDataException();
     }
 
     private static ExecutionResult WaitForRecurringResultEvent(Guid id, DateTime after)
     {
-        return ExecutionResult.WaitForEvent(nameof(RecurringResult), id.ToString(), after);
+        return new ExecutionResult
+        {
+            EventName = nameof(RecurringResult),
+            EventKey = id.ToString(),
+            EventAsOf = after.ToUniversalTime(),
+            Proceed = false,
+        };
+    }
+
+    private static ExecutionResult WaitForRecurringResultEventWithPersistence(Guid id, DateTime after, List<object> branches, object persistenceData)
+    {
+        return new ExecutionResult
+        {
+            EventName = nameof(RecurringResult),
+            EventKey = id.ToString(),
+            EventAsOf = after.ToUniversalTime(),
+            Proceed = false,
+            PersistenceData = persistenceData,
+            BranchValues = branches
+        };
     }
 
     private async Task<Guid> CreateWorkerAndDoWork()
