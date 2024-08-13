@@ -30,6 +30,7 @@ public class MyWorkflow : IWorkflow<WorkState>
                 Console.WriteLine($"Starting workflow: {state.Workflow.Data}");
                 return ExecutionResult.Next();
             })
+
             .Then<RepeatUntilWorkDone>()
 
 
@@ -96,7 +97,17 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
         if (!context.ExecutionPointer.EventPublished)
         {
             var id = await CreateWorkerAndDoWork();
-            return WaitForRecurringResultEvent(id, now);
+            return new ExecutionResult
+            {
+                EventName = nameof(RecurringResult),
+                EventKey = id.ToString(),
+                EventAsOf = now.ToUniversalTime(),
+                Proceed = false,
+                BranchValues = [null],
+            };
+
+
+           // return WaitForRecurringResultEvent(id, now);
         }
 
         if (context.ExecutionPointer.EventData is not RecurringResult recurringResult)

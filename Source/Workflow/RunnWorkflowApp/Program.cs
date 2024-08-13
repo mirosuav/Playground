@@ -14,7 +14,7 @@ internal class Program
         services.AddLogging();
         services.AddWorkflow(x => x.UseSqlite(@"Data Source=workflow.db;", true));
         services.AddTransient<ExternalService>();
-        //services.AddTransient<RecurringStep>();
+        services.AddTransient<RecurringStep>();
         services.AddTransient<RepeatUntilWorkDone>();
 
         _ioc = services.BuildServiceProvider();

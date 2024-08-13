@@ -9,7 +9,7 @@ namespace RunWorkflowApp;
 
 public class ExternalService(IWorkflowHost workflowHost)
 {
-    private static int _itemsRemaining = 6;
+    private static int _itemsRemaining = 16;
 
     public Task DoWork(Guid id)
     {
@@ -20,7 +20,7 @@ public class ExternalService(IWorkflowHost workflowHost)
 
     private async Task WaitAndSendEvent(Guid id)
     {
-        await Task.Delay(100);
+        await Task.Delay(50);
 
         try
         {
