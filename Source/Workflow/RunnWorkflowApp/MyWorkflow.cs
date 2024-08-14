@@ -92,7 +92,7 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
     {
         Console.WriteLine($"Entering RepeatUntilWorkDone: {context.ExecutionPointer.EventData}");
 
-        var now = DateTime.Now; // capture event published after this point
+        var eventAsOf = DateTime.UtcNow; // capture event published after this point
 
         if (!context.ExecutionPointer.EventPublished)
         {
@@ -101,9 +101,8 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
             {
                 EventName = nameof(RecurringResult),
                 EventKey = id.ToString(),
-                EventAsOf = now.ToUniversalTime(),
+                EventAsOf = eventAsOf,
                 Proceed = false,
-                BranchValues = [null],
             };
 
 
@@ -117,19 +116,15 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
             return ExecutionResult.Next();
 
         context.ExecutionPointer.EventPublished = false;
-        ///
         
         var id2 = await CreateWorkerAndDoWork();
         return new ExecutionResult
         {
             EventName = nameof(RecurringResult),
             EventKey = id2.ToString(),
-            EventAsOf = now.ToUniversalTime(),
+            EventAsOf = eventAsOf,
             Proceed = false,
-            BranchValues = [null],
         };
-
-        ///
 
         //if (context.PersistenceData == null)
         //{
@@ -151,29 +146,29 @@ public class RepeatUntilWorkDone(ExternalService myService) : StepBodyAsync
         //throw new CorruptPersistenceDataException();
     }
 
-    private static ExecutionResult WaitForRecurringResultEvent(Guid id, DateTime after)
-    {
-        return new ExecutionResult
-        {
-            EventName = nameof(RecurringResult),
-            EventKey = id.ToString(),
-            EventAsOf = after.ToUniversalTime(),
-            Proceed = false,
-        };
-    }
+    //private static ExecutionResult WaitForRecurringResultEvent(Guid id, DateTime after)
+    //{
+    //    return new ExecutionResult
+    //    {
+    //        EventName = nameof(RecurringResult),
+    //        EventKey = id.ToString(),
+    //        EventAsOf = after.ToUniversalTime(),
+    //        Proceed = false,
+    //    };
+    //}
 
-    private static ExecutionResult WaitForRecurringResultEventWithPersistence(Guid id, DateTime after, List<object> branches, object persistenceData)
-    {
-        return new ExecutionResult
-        {
-            EventName = nameof(RecurringResult),
-            EventKey = id.ToString(),
-            EventAsOf = after.ToUniversalTime(),
-            Proceed = false,
-            PersistenceData = persistenceData,
-            BranchValues = branches
-        };
-    }
+    //private static ExecutionResult WaitForRecurringResultEventWithPersistence(Guid id, DateTime after, List<object> branches, object persistenceData)
+    //{
+    //    return new ExecutionResult
+    //    {
+    //        EventName = nameof(RecurringResult),
+    //        EventKey = id.ToString(),
+    //        EventAsOf = after.ToUniversalTime(),
+    //        Proceed = false,
+    //        PersistenceData = persistenceData,
+    //        BranchValues = branches
+    //    };
+    //}
 
     private async Task<Guid> CreateWorkerAndDoWork()
     {

@@ -9,7 +9,7 @@ namespace RunWorkflowApp;
 
 public class ExternalService(IWorkflowHost workflowHost)
 {
-    private static int _itemsRemaining = 16;
+    private static int _itemsRemaining = 100;
 
     public Task DoWork(Guid id)
     {
