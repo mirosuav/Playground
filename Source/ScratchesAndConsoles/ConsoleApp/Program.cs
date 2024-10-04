@@ -32,20 +32,12 @@ namespace ConsoleApp
             {
                 var user = db.Users.Include(x => x.Roles).FirstOrDefault();
 
-                // You can do this if Roles collection is defined as IList<> on User entity
-                // Just overwrite the collection with new one, old roles gets deleted in database
-                //user!.Roles = new List<UserRole>()
-                //{
-                //        new UserRole() { Role = "Admin", User = user },
-                //        new UserRole() { Role = "User", User = user },
-                //        new UserRole() { Role = "Contributor", User = user },
-                //};
-
-                // For Roles collections defined as ICollection<> do this
-                user!.Roles.Clear();
-                user.Roles.Add(new UserRole() { Role = "Admin", User = user });
-                user.Roles.Add(new UserRole() { Role = "User", User = user });
-                user.Roles.Add(new UserRole() { Role = "Contributor", User = user });
+                user!.Roles = new List<UserRole>()
+                {
+                        new UserRole() { Role = "Admin", User = user },
+                        new UserRole() { Role = "User", User = user },
+                        new UserRole() { Role = "Contributor", User = user },
+                };
 
                 db.SaveChanges();
             }
@@ -85,5 +77,6 @@ public class UserContext : DbContext
         base.OnConfiguring(optionsBuilder);
         optionsBuilder.UseSqlServer(
             "Server=localhost;Database=test;Integrated security=True;Trust Server Certificate=True");
+        optionsBuilder.LogTo(Console.WriteLine);
     }
 }
